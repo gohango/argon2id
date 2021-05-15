@@ -1,6 +1,9 @@
 package argon2id
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 func TestCompareHashAndPassword(t *testing.T) {
 	type args struct {
@@ -19,7 +22,7 @@ func TestCompareHashAndPassword(t *testing.T) {
 				hash: "$argon2id$v=19$m=4096,t=3,p=1$82XldKYgqAqher7EuFzPNw$O1Epnr+m1JYkgtWcgVLID39ro6He105HTFnE+SinJyM",
 				pass: []byte("foo123"),
 			},
-			wantErr: false,
+			wantErr:     false,
 			expectedErr: nil,
 		},
 		{
@@ -28,7 +31,7 @@ func TestCompareHashAndPassword(t *testing.T) {
 				hash: "$argon2i$v=19$m=4096,t=3,p=1$82XldKYgqAqher7EuFzPNw$O1Epnr+m1JYkgtWcgVLID39ro6He105HTFnE+SinJyM",
 				pass: []byte("foo123"),
 			},
-			wantErr: true,
+			wantErr:     true,
 			expectedErr: ErrIncompatibleVersion,
 		},
 		{
@@ -37,7 +40,7 @@ func TestCompareHashAndPassword(t *testing.T) {
 				hash: "$argon2id$m=4096,t=3,p=1$82XldKYgqAqher7EuFzPNw$O1Epnr+m1JYkgtWcgVLID39ro6He105HTFnE+SinJyM",
 				pass: []byte("foo123"),
 			},
-			wantErr: true,
+			wantErr:     true,
 			expectedErr: ErrInvalidHash,
 		},
 		{
@@ -46,7 +49,7 @@ func TestCompareHashAndPassword(t *testing.T) {
 				hash: "$argon2id$v=19$m=4096,t=3,p=1$82XldKYgqAqher7EuFzPNw$O1Epnr+m1JYkgtWcgVLID39ro6He105HTFnE+SinJym",
 				pass: []byte("foo123"),
 			},
-			wantErr: true,
+			wantErr:     true,
 			expectedErr: ErrPasswordNotMatch,
 		},
 	}
@@ -60,6 +63,48 @@ func TestCompareHashAndPassword(t *testing.T) {
 
 			if tt.wantErr && err != tt.expectedErr {
 				t.Errorf("CompareHashAndPassword() error = %v, expectation = %v", err, tt.expectedErr)
+			}
+		})
+	}
+}
+
+func TestGenerateFromPassword(t *testing.T) {
+	type args struct {
+		pass   []byte
+		params *Params
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "Corret password",
+			args: args{
+				pass: []byte("foo123"),
+				params: &Params{
+					Memory:      4096,
+					Iterations:  1000,
+					Parallelism: 0,
+					SaltLength:  32,
+					KeyLength:   64,
+				},
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			str, err := GenerateFromPassword(tt.args.pass, tt.args.params)
+			fmt.Println(str)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GenerateFromPassword() error = %v, wantErr = %v", err, tt.wantErr)
+			}
+
+			if err = CompareHashAndPassword(str, tt.args.pass); err != nil {
+				t.Errorf("GenerateFromPassword() Failed to compare hashed password with the real password. %v.", err)
 			}
 		})
 	}
